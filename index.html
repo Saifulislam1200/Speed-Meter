@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Speed Meter</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="https://cdn-icons-png.flaticon.com/512/1183/1183672.png" type="image/png">
+
+    <script src="https://cdn.tailwindcss.com"></script> <!-- Import Tailwind CSS -->
+    <style>
+        @import url('https://fonts.cdnfonts.com/css/digital-7-mono'); /* Seven-Segment Digital Font */
+        
+        .digital-font {
+            font-family: 'Digital-7 Mono', sans-serif;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen bg-gray-100 text-black px-4">
+    
+    <!-- Main Title -->
+    <h1 class="text-4xl sm:text-5xl font-bold text-gray-700 mb-4 text-center">Digital Speed Meter</h1>
+
+    <div class="text-center w-full max-w-md">
+        <!-- Digital Speed Display -->
+        <p id="speed" class="text-6xl sm:text-9xl digital-font text-black mt-4">0</p>
+        <p id="unit" class="text-xl sm:text-2xl text-gray-500">KM/H</p>
+
+        <!-- Speed Units -->
+        <div class="mt-4 bg-gray-200 py-3 px-4 rounded-lg shadow-md w-full">
+            <div class="flex flex-wrap justify-center space-x-4 sm:space-x-8 text-lg font-semibold text-gray-600 tracking-wide">
+                <span id="unit-ms" class="cursor-pointer hover:text-blue-500 uppercase">METER/SECOND</span>
+                <span id="unit-mph" class="cursor-pointer hover:text-blue-500 uppercase">MILES/HOUR</span>
+                <span id="unit-kmh" class="cursor-pointer text-blue-500 font-bold uppercase">KM/HOUR</span>
+            </div>
+        </div>
+
+        <!-- Start/Stop Button -->
+        <div class="mt-6">
+            <button id="startBtn" class="px-10 sm:px-12 py-3 sm:py-4 bg-green-500 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-lg hover:bg-green-600 active:scale-95 transition w-full">
+                START
+            </button>
+        </div>
+
+        <p id="error" class="text-red-400 mt-3 text-sm sm:text-base"></p>
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-6 sm:mt-10 text-gray-500 text-base sm:text-lg text-center">
+        Developed by 
+        <a href="https://www.facebook.com/saifuldevs/" target="_blank" class="text-blue-500 font-semibold hover:underline">Saiful</a>
+    </footer>
+
+    <script>
+        let currentUnit = "KM/H"; // Default unit
+        let currentSpeed = 0; // Default speed is 0
+        let speedTrackingStarted = false; // Track if speed updates have started
+        let watchID = null; // Stores geolocation watchPosition ID
+
+        document.getElementById("startBtn").addEventListener("click", function () {
+            if (!speedTrackingStarted) {
+                // Request Location Permission
+                navigator.geolocation.getCurrentPosition(
+                    () => console.log("Location access granted"),
+                    (error) => console.log("Location access denied:", error.message)
+                );
+
+                // Start Tracking
+                speedTrackingStarted = true;
+                document.getElementById("startBtn").textContent = "STOP";
+                document.getElementById("startBtn").classList.replace("bg-green-500", "bg-red-500");
+                document.getElementById("startBtn").classList.replace("hover:bg-green-600", "hover:bg-red-600");
+
+                if ("geolocation" in navigator) {
+                    watchID = navigator.geolocation.watchPosition(
+                        (position) => {
+                            if (speedTrackingStarted) {
+                                let speed = position.coords.speed; // Speed in m/s
+                                if (speed === null || speed < 0.3) { 
+                                    speed = 0; // Ignore small fluctuations
+                                }
+                                currentSpeed = speed;
+                                updateSpeedDisplay();
+                            }
+                        },
+                        (error) => {
+                            document.getElementById("error").textContent = "Unable to access location";
+                        },
+                        { enableHighAccuracy: true }
+                    );
+                } else {
+                    document.getElementById("error").textContent = "Geolocation is not supported by your browser";
+                }
+            } else {
+                // Stop Tracking
+                speedTrackingStarted = false;
+                document.getElementById("startBtn").textContent = "START";
+                document.getElementById("startBtn").classList.replace("bg-red-500", "bg-green-500");
+                document.getElementById("startBtn").classList.replace("hover:bg-red-600", "hover:bg-green-600");
+
+                if (watchID !== null) {
+                    navigator.geolocation.clearWatch(watchID); // Stop GPS tracking
+                    watchID = null;
+                }
+            }
+        });
+
+        function updateSpeedDisplay() {
+            let displaySpeed = 0;
+
+            if (currentUnit === "M/S") {
+                displaySpeed = currentSpeed.toFixed(2);
+            } else if (currentUnit === "MPH") {
+                displaySpeed = (currentSpeed * 2.237).toFixed(2);
+            } else {
+                displaySpeed = (currentSpeed * 3.6).toFixed(2);
+            }
+
+            document.getElementById("speed").textContent = currentSpeed > 0 ? displaySpeed : "0";
+            document.getElementById("unit").textContent = currentUnit;
+        }
+
+        // Change Unit Click Events (Only Changes Unit, Not Speed)
+        function changeUnit(newUnit, elementId) {
+            currentUnit = newUnit;
+            updateSpeedDisplay(); // Convert the current speed without changing its value
+
+            // Remove active style from all units
+            document.querySelectorAll(".text-blue-500").forEach(el => {
+                el.classList.remove("text-blue-500", "font-bold");
+            });
+
+            // Add active style to selected unit
+            document.getElementById(elementId).classList.add("text-blue-500", "font-bold");
+        }
+
+        document.getElementById("unit-ms").addEventListener("click", () => changeUnit("M/S", "unit-ms"));
+        document.getElementById("unit-mph").addEventListener("click", () => changeUnit("MPH", "unit-mph"));
+        document.getElementById("unit-kmh").addEventListener("click", () => changeUnit("KM/H", "unit-kmh"));
+    </script>
+</body>
+</html>
